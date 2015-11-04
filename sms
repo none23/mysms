@@ -1,2 +1,2 @@
 #/bin/sh
-python ./sms.py
+python $HOME/none23/sms/sms.py
