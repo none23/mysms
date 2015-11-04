@@ -166,7 +166,7 @@ if __name__ == "__main__":
     if service_result:
         if int(service_result[0]) == 100:
             show_debug_messages("smssend[debug]: Message send ok. ID: " +
-                                str(service_result[1]))
+                                str(service_result))
             sys.exit(0)
         else:
             show_debug_messages("smssend[debug]: Unable send sms message to" +
