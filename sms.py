@@ -7,7 +7,7 @@
 
 import sys
 import argparse
-import  httplib2
+import httplib2
 from os import getenv
 from urllib.parse import quote
 
@@ -72,9 +72,11 @@ servicecodes = {
           не ввел код, присланный в регистрационной смс)",
     }
 
+
 def show_debug_messages(msg):
-    if cliargs.debug == True:
+    if cliargs.debug:
         print(msg)
+
 
 def get_home_path():
     if sys.platform.startswith('freebsd') or sys.platform.startswith('linux'):
@@ -86,6 +88,7 @@ def get_home_path():
     else:
         print("Unable to get home path.")
         sys.exit(3)
+
 
 def get_api_id():
     if cliargs.api_id:
@@ -102,6 +105,7 @@ def get_api_id():
             api_id = api_id.replace("\n", "")
     return str(api_id)
 
+
 def get_phonenumber():
     if cliargs.to:
         phonenumber = cliargs.to
@@ -115,6 +119,7 @@ def get_phonenumber():
         phonenumber = phonenumber.replace("\r\n", "")
         phonenumber = phonenumber.replace("\n", "")
     return str(phonenumber)
+
 
 def get_msg():
     if cliargs.message:
@@ -137,7 +142,7 @@ if __name__ == "__main__":
         sys.exit(3)
 
     url = ("http://sms.ru/sms/send?api_id=" + api_id + "&to=" +
-           phonenumber +"&text=" + quote(get_msg()) + "&partner_id=3805")
+           phonenumber + "&text=" + quote(get_msg()) + "&partner_id=3805")
     if cliargs.debug:
         url = url + "&test=1"
     if cliargs.sendername:
@@ -168,5 +173,3 @@ if __name__ == "__main__":
                                 phonenumber + " Service has returned code: " +
                                 servicecodes[int(service_result)])
             sys.exit(1)
-
-
