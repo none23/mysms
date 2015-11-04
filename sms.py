@@ -1,20 +1,15 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf8 -*-
 
 # This is a slightly changed version of smssend by Denis Khabarov
 # Originally from https://github.com/dkhabarov/smssend
 
 
-import sys, argparse
+import sys
+import argparse
+import  httplib2
 from os import getenv
-
-if sys.version_info[0] == 2:
-    from urllib2 import urlopen, URLError
-    from urllib import quote
-if sys.version_info[0] == 3:
-    from urllib.request import urlopen
-    from urllib.error import URLError
-    from urllib.parse import quote
+from urllib.parse import quote
 
 parser = argparse.ArgumentParser(
     epilog="""
@@ -38,11 +33,10 @@ parser = argparse.ArgumentParser(
     usage="%(prog)s --help"
             )
 parser.add_argument("--api-id", dest="api_id", metavar="VALUE", help="API ID (optional)")
-parser.add_argument("--to", metavar="PHONENUMBER", required=True, help="Telephone number to send the message to (required)")
+parser.add_argument("--to", metavar="PHONENUMBER", help="Telephone number to send the message to (required)")
 parser.add_argument("--message", metavar="MESSAGE", help="Read the message from a file (optional)")
 parser.add_argument("--from", dest="sendername", metavar="VALUE", help="Sender name (optional)")
 parser.add_argument("--time", metavar="VALUE", help="Send time using UNIX TIME format (optional)")
-parser.add_argument("--http_timeout", metavar="VALUE", default=10, help="Timeout for http connection (default is 10)")
 parser.add_argument("--translit", action="store_true", help="Convert non-latin characters to translit")
 parser.add_argument("--debug", action="store_true", help="Print debug messages")
 cliargs = parser.parse_args()
@@ -100,7 +94,21 @@ def get_api_id():
         if len(data) >= 10:
             api_id = data.replace("\r\n", "")
             api_id = api_id.replace("\n", "")
-    return api_id
+    return str(api_id)
+
+def get_phonenumber():
+    if cliargs.to:
+        phonenumber = cliargs.to
+    else:
+        try:
+            with open("%s/.mynumber" % (get_home_path())) as f:
+                phonenumber = str(f.read())
+        except IOError as errstr:
+            print(errstr)
+            sys.exit(3)
+        phonenumber = phonenumber.replace("\r\n", "")
+        phonenumber = phonenumber.replace("\n", "")
+    return str(phonenumber)
 
 def get_msg():
     if cliargs.message:
@@ -109,15 +117,21 @@ def get_msg():
         message = sys.stdin.read()
     return message
 
-def main():
+
+if __name__ == "__main__":
     api_id = get_api_id()
+    phonenumber = get_phonenumber()
     if api_id is None:
-        print("Error for get api-id. Check" +
-              get_home_path() + "/.smssendrc or see --help")
+        print("Failed to get api-id. Please make sure " +
+              get_home_path() + " file exists or see --help")
+        sys.exit(3)
+    if phonenumber is None:
+        print("Failed to get api-id. Please make sure " +
+              get_home_path() + " file exists or see --help")
         sys.exit(3)
 
-    url = ("http://sms.ru/sms/send?api_id=" + str(api_id) + "&to=" +
-           str(cliargs.to) +"&text=" + quote(get_msg()) + "&partner_id=3805")
+    url = ("http://sms.ru/sms/send?api_id=" + api_id + "&to=" +
+           phonenumber +"&text=" + quote(get_msg()) + "&partner_id=3805")
     if cliargs.debug:
         url = url + "&test=1"
     if cliargs.sendername:
@@ -128,14 +142,15 @@ def main():
         url = url + "&translit=1"
 
     try:
-        res = urlopen(url, timeout=cliargs.http_timeout)
-        show_debug_messages("GET: " + res.geturl() + str(res.msg) +
-                            "\nReply:\n" + str(res.info()))
-    except URLError as errstr:
+        h = httplib2.Http()
+        print(url)
+        response, content = h.request(url)
+        show_debug_messages("GET: " + url + "\nStatus:\n" + str(response.status))
+    except Exception() as errstr:
         show_debug_messages("smssend[debug]: " + errstr)
         sys.exit(2)
 
-    service_result = res.read().splitlines()
+    service_result = str(content, 'utf-8')
     if service_result:
         if int(service_result[0]) == 100:
             show_debug_messages("smssend[debug]: Message send ok. ID: " +
@@ -143,10 +158,8 @@ def main():
             sys.exit(0)
         else:
             show_debug_messages("smssend[debug]: Unable send sms message to" +
-                                cliargs.to + " Service has returned code: " +
-                                servicecodes[int(service_result[0])])
+                                phonenumber + " Service has returned code: " +
+                                servicecodes[int(service_result)])
             sys.exit(1)
 
-if __name__ == "__main__":
-    main()
 
