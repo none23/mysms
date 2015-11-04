@@ -32,19 +32,25 @@ parser = argparse.ArgumentParser(
     prog="smssend",
     usage="%(prog)s --help"
             )
-parser.add_argument("--api-id", dest="api_id", metavar="VALUE", help="API ID (optional)")
-parser.add_argument("--to", metavar="PHONENUMBER", help="Telephone number to send the message to (required)")
-parser.add_argument("--message", metavar="MESSAGE", help="Read the message from a file (optional)")
-parser.add_argument("--from", dest="sendername", metavar="VALUE", help="Sender name (optional)")
-parser.add_argument("--time", metavar="VALUE", help="Send time using UNIX TIME format (optional)")
-parser.add_argument("--translit", action="store_true", help="Convert non-latin characters to translit")
-parser.add_argument("--debug", action="store_true", help="Print debug messages")
+parser.add_argument("--api-id", dest="api_id", metavar="VALUE",
+                    help="API ID (optional)")
+parser.add_argument("--to", metavar="PHONENUMBER",
+                    help="Telephone number to send the message to (required)")
+parser.add_argument("--message", metavar="MESSAGE",
+                    help="Message to be sent (by default read from stdin")
+parser.add_argument("--from", dest="sendername", metavar="VALUE",
+                    help="Sender name (optional)")
+parser.add_argument("--time", metavar="VALUE",
+                    help="Send time using UNIX TIME format (optional)")
+parser.add_argument("--translit", action="store_true", help="Convert to latin")
+parser.add_argument("--debug", action="store_true",
+                    help="Print debug messages")
 cliargs = parser.parse_args()
 
 servicecodes = {
     100: "Сообщение принято к отправке. На следующих строчках  вы найдете \
-          идентификаторы отправленных сообщений в том же порядке, в котором вы \
-          указали номера, на которых совершалась отправка.",
+          идентификаторы отправленных сообщений в том же порядке, в котором \
+          вы указали номера, на которых совершалась отправка.",
     200: "Неправильный api_id",
     201: "Не хватает средств на лицевом счету",
     202: "Неправильно указан получатель",
@@ -145,7 +151,8 @@ if __name__ == "__main__":
         h = httplib2.Http()
         print(url)
         response, content = h.request(url)
-        show_debug_messages("GET: " + url + "\nStatus:\n" + str(response.status))
+        show_debug_messages("GET: " + url +
+                            "\nStatus:\n" + str(response.status))
     except Exception() as errstr:
         show_debug_messages("smssend[debug]: " + errstr)
         sys.exit(2)
