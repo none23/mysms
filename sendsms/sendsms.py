@@ -21,12 +21,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-
-
 import sys
 import argparse
 import requests
-import time # (TODO: make '--time' values human-readable)
 from os import getenv
 
 
@@ -35,14 +32,17 @@ def parse_args():
     parser.add_argument("--api-id", dest="api_id", metavar="VALUE",
                         help="API ID (optional)")
     parser.add_argument("--to", metavar="PHONENUMBER",
-                        help="Telephone number to send the message to (required)")
+                        help="Telephone number to send the message to (req'd)")
     parser.add_argument("--message", metavar="MESSAGE", type=str,
                         help="Message to be sent (by default read from stdin")
     parser.add_argument("--from", dest="sendername", metavar="VALUE",
                         help="Sender name (optional)")
+    parser.add_argument("--wait", metavar="VALUE",
+                        help="Wait given number of minutes before sending")
     parser.add_argument("--time", metavar="VALUE",
-                        help="Send time using UNIX TIME format (optional)")
-    parser.add_argument("--translit", action="store_true", help="Convert to latin")
+                        help="Send at certain time (UNIX_TIME) (optional)")
+    parser.add_argument("--translit", action="store_true",
+                        help="Convert to latin")
     parser.add_argument("--debug", action="store_true",
                         help="Debug mode: simulate sending (free of charge)")
     args = parser.parse_args()
@@ -50,7 +50,7 @@ def parse_args():
 
 
 def check_args_type(func):
-    def inner(args):
+    def inner(args=None):
         if isinstance(args, argparse.Namespace):
             return func(args)
         else:
@@ -61,7 +61,6 @@ def check_args_type(func):
     return inner
 
 
-@ check_args_type
 def argparse_to_url_keys(args):
     """ Creates a dict of url parameters from an argparse.Namespace.
     Returns a dict to be used as 'params' value of a requests.get() object.
@@ -87,25 +86,29 @@ def argparse_to_url_keys(args):
     if args.sendername:
         url_keys['from'] = args.sendername
     if args.time:
-        url_keys['time'] = args.time
+        url_keys['time'] = parse_arg_time(args.time)
     return url_keys
 
 
-def set_url_keys(message, debug=False, phone_number=get_phone_number(),
-                 time=None, sendername=None, api_id=get_api_id()):
-    """ Converts arguments to url parameters dict """
-
-    url_keys = dict()
-    url_keys['api_id'] = api_id
-    url_keys['to'] = phone_number
-    url_keys['text'] = message
-    if debug:
-        url_keys['test'] = '1'
-    if sendername:
-        url_keys['from'] = sendername
-    if time:
-        url_keys['time'] = time
-    return url_keys
+def parse_arg_time(input_value):
+    if isinstance(input_value, str):
+        try:
+            # date and time given
+            input_date, input_time = input_value.split('')
+            try:
+                input_hh, input_mm = input_time.split(':')
+            except ValueError:
+                # incorrect input_value
+                print('failed to parse the value of time')
+                sys.exit(1)
+        except ValueError:
+            # only time given
+            try:
+                input_hh, input_mm = input_value.split(':')
+            except ValueError:
+                # incorrect input_value
+                print('failed to parse the value of time')
+                sys.exit(1)
 
 
 @ check_args_type
@@ -139,6 +142,23 @@ def get_phone_number(args):
         phone_number = phone_number.replace("\r\n", "")
         phone_number = phone_number.replace("\n", "")
     return str(phone_number)
+
+
+def set_url_keys(message, debug=False, phone_number=get_phone_number(),
+                 time=None, sendername=None, api_id=get_api_id()):
+    """ Converts arguments to url parameters dict """
+
+    url_keys = dict()
+    url_keys['api_id'] = api_id
+    url_keys['to'] = phone_number
+    url_keys['text'] = message
+    if debug:
+        url_keys['test'] = '1'
+    if sendername:
+        url_keys['from'] = sendername
+    if time:
+        url_keys['time'] = time
+    return url_keys
 
 
 @ check_args_type
@@ -175,7 +195,7 @@ def translate_response(code):
         try:
             code = int(code)
         except:
-            raise Exception("argument must be an int (%s given)" % (type(code)))
+            raise Exception("arg must be an int (%s given)" % (type(code)))
 
     servicecodes = {
         100: "Message sent successfully",
@@ -205,4 +225,3 @@ if __name__ == "__main__":
     url_keys = argparse_to_url_keys(args)
     result = make_request(url_keys)
     print(result)
-
