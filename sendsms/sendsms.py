@@ -22,6 +22,7 @@
 # THE SOFTWARE.
 
 import sys
+import time
 import argparse
 import requests
 from os import getenv
@@ -40,7 +41,9 @@ def parse_args():
     parser.add_argument("--wait", metavar="VALUE",
                         help="Wait given number of minutes before sending")
     parser.add_argument("--time", metavar="VALUE",
-                        help="Send at certain time (UNIX_TIME) (optional)")
+                        help="Send at certain time ([MM/DD] HH:MM:SS])")
+    parser.add_argument("--unixtime", metavar="VALUE",
+                        help="Send at certain time (UNIX_TIME)")
     parser.add_argument("--translit", action="store_true",
                         help="Convert to latin")
     parser.add_argument("--debug", action="store_true",
@@ -88,27 +91,45 @@ def argparse_to_url_keys(args):
     if args.time:
         url_keys['time'] = parse_arg_time(args.time)
     return url_keys
+    if args.unixtime:
+        url_keys['time'] = args.unixtime
+    return url_keys
+
+
+def raise_bad_time():
+    print("""Failed to parse the value of time.
+            Plese enter time as 'MM/DD HH:MM:SS'
+            (e.g. 12/31 23:59:59)""")
+    sys.exit(1)
 
 
 def parse_arg_time(input_value):
     if isinstance(input_value, str):
         try:
             # date and time given
-            input_date, input_time = input_value.split('')
-            try:
-                input_hh, input_mm = input_time.split(':')
-            except ValueError:
-                # incorrect input_value
-                print('failed to parse the value of time')
-                sys.exit(1)
+            input_date, input_time = input_value.split()
+
         except ValueError:
             # only time given
-            try:
-                input_hh, input_mm = input_value.split(':')
-            except ValueError:
-                # incorrect input_value
-                print('failed to parse the value of time')
-                sys.exit(1)
+            input_date = time.strftime('%m/%d')
+            input_time = input_value
+
+        year_now = time.strftime('%Y')
+        full_date_str = year_now + '-' + input_date + '-' + input_time
+
+        try:
+            parsed_unixtime = time.strptime(
+                full_date_str,
+                '%Y-%m/%d-%H-%M-%S'
+            )
+
+        except ValueError:
+            raise_bad_time()
+
+        return parsed_unixtime
+
+    else:
+        raise_bad_time()
 
 
 @ check_args_type
